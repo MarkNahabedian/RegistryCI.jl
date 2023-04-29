@@ -865,6 +865,84 @@ function meets_version_can_be_imported(
     end
 end
 
+const guideline_linecounts_meet_thresholds = Guideline(;
+    info="Test that lines of source, tests and documentation meet specified thresholds",
+    docs="""Make sure that various line counts meet or exceed specified thresholds.
+
+ * `src_min_lines`:        Minimum number of lines of source code
+ * `readme_min_lines`:     Minimum number of lines in the README file
+ * `test_min_lines`:       Minimum number of lines of code in the test directory
+ * `doc_min_lines`:        Minimum number of lines of documentation
+ * `readme_min_fraction`:  minimum ratio of readme lines to src lines
+ * `test_min_fraction`:    minimum ratio of test lines to src lines
+ * `doc_min_fraction`:     minimum ratio of doc to src lines
+
+For `test_min_fraction` and `doc_min_fraction`, the denominator of the fraction
+also includes the number of lines of test or docs respectively.
+""",
+    check=(data, guideline_parameters) ->
+        linecounts_meet_thresholds(data.pkg_code_path, guideline_parameters)
+)
+
+function linecounts_meet_thresholds(pkg_code_path,
+                                    guideline_parameters)
+    analysis = PackageAnalyzer.analyze(pkg_code_path;)
+    # @info analysis
+    if isempty(analysis.lines_of_code)
+        return false, "PackageAnalyzer didn't find any lines of code."
+    end
+    # get parameters:
+    src_min_lines        = get(guideline_parameters, :src_min_lines,    0)
+    readme_min_lines     = get(guideline_parameters, :readme_min_lines, 0)
+    test_min_lines       = get(guideline_parameters, :test_min_lines,   0)
+    doc_min_lines        = get(guideline_parameters, :doc_min_lines,    0)
+    readme_min_fraction  = get(guideline_parameters, :readme_min_fraction, 0.0)
+    test_min_fraction    = get(guideline_parameters, :test_min_fraction,   0.0)
+    doc_min_fraction     = get(guideline_parameters, :doc_min_fraction,    0.0)
+    issues = []
+    src_line_count = PackageAnalyzer.count_julia_loc(analysis, "src")
+    test_line_count = PackageAnalyzer.count_julia_loc(analysis, "test")
+    docs_line_count = PackageAnalyzer.count_docs(analysis)
+    readme_line_count = PackageAnalyzer.count_readme(analysis)
+
+    function check_count(desc, got, want)
+        if got < want
+            push!(issues, "Too few lines of $desc: $got, where $want is required.")
+        end
+    end
+    check_count("source code", src_line_count, src_min_lines)
+    check_count("README file", readme_line_count, readme_min_lines)
+    check_count("test code", test_line_count, test_min_lines)
+    # Some projects might put adequate documentation in their README
+    # file and not have any other documentation.
+    check_count("documentation",
+                max(readme_line_count, docs_line_count),
+                doc_min_lines)
+    function check_fraction(desc, got, want)
+        if got < want
+            push!(issues,
+                  @sprintf("The ratio of %s is less than required: %1.2f%% versus %1.2f%%.",
+                           desc, 100 * got, 100 * want))
+        end
+    end
+    check_fraction("README lines to source code",
+                   readme_line_count / src_line_count, readme_min_fraction)
+    check_fraction("test lines to test plus src lines",
+                   test_line_count / (test_line_count + src_line_count),
+                   test_min_fraction)
+    # See the comment above regarding README vs. docs.
+    check_fraction("documentation lines to documentation plus src lines",
+                   max(readme_line_count, docs_line_count) /
+                       (docs_line_count + src_line_count),
+                   doc_min_fraction)
+    if isempty(issues)
+        return true, ""
+    else
+        return false, join(issues, "\n")
+    end
+end
+
+
 function _run_pkg_commands(
     working_directory::String,
     pkg::String,
