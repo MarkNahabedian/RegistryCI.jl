@@ -61,48 +61,71 @@ RegistryCI.AutoMerge.run(
     additional_check_runs = String[],
     check_license = true,
     public_registries = String["https://github.com/HolyLab/HolyLabRegistry"],
+    src_min_lines = 0,
+    readme_min_lines = 0,
+    test_min_lines = 0,
+    doc_min_lines = 0,
+    readme_min_fraction`= 0.0,
+    test_min_fraction`= 0.0,
+    doc_min_fraction`= 0.0
 )
 ```
 """
 function run(;
-    env=ENV,
-    cicfg::CIService=auto_detect_ci_service(; env=env),
-    merge_new_packages::Bool,
-    merge_new_versions::Bool,
-    new_package_waiting_period,
-    new_jll_package_waiting_period,
-    new_version_waiting_period,
-    new_jll_version_waiting_period,
-    registry::String,
-    #
-    tagbot_enabled::Bool=false,
-    #
-    authorized_authors::Vector{String},
-    authorized_authors_special_jll_exceptions::Vector{String},
-    #
-    additional_statuses::AbstractVector{<:AbstractString}=String[],
-    additional_check_runs::AbstractVector{<:AbstractString}=String[],
-    #
-    error_exit_if_automerge_not_applicable::Bool=false,
-    #
-    master_branch::String="master",
-    master_branch_is_default_branch::Bool=true,
-    suggest_onepointzero::Bool=true,
-    #
-    registry_deps::Vector{<:AbstractString}=String[],
-    api_url::String="https://api.github.com",
-    check_license::Bool=false,
-    # A list of public Julia registries (repository URLs)
-    # which will be checked for UUID collisions in order to
-    # mitigate the dependency confusion vulnerability. See
-    # the `dependency_confusion.jl` file for details.
-    public_registries::Vector{<:AbstractString}=String[],
-    read_only::Bool=false,
-    environment_variables_to_pass::Vector{<:AbstractString}=String[],
-)::Nothing
+             env=ENV,
+             cicfg::CIService=auto_detect_ci_service(; env=env),
+             merge_new_packages::Bool,
+             merge_new_versions::Bool,
+             new_package_waiting_period,
+             new_jll_package_waiting_period,
+             new_version_waiting_period,
+             new_jll_version_waiting_period,
+             registry::String,
+             #
+             tagbot_enabled::Bool=false,
+             #
+             authorized_authors::Vector{String},
+             authorized_authors_special_jll_exceptions::Vector{String},
+             #
+             additional_statuses::AbstractVector{<:AbstractString}=String[],
+             additional_check_runs::AbstractVector{<:AbstractString}=String[],
+             #
+             error_exit_if_automerge_not_applicable::Bool=false,
+             #
+             master_branch::String="master",
+             master_branch_is_default_branch::Bool=true,
+             suggest_onepointzero::Bool=true,
+             #
+             registry_deps::Vector{<:AbstractString}=String[],
+             api_url::String="https://api.github.com",
+             check_license::Bool=false,
+             # A list of public Julia registries (repository URLs)
+             # which will be checked for UUID collisions in order to
+             # mitigate the dependency confusion vulnerability. See
+             # the `dependency_confusion.jl` file for details.
+             public_registries::Vector{<:AbstractString}=String[],
+             read_only::Bool=false,
+             environment_variables_to_pass::Vector{<:AbstractString}=String[],
+             # guideline_linecounts_meet_thresholds:
+             src_min_lines = 1,
+             readme_min_lines= 1,
+             test_min_lines = 1,
+             doc_min_lines = 1,
+             readme_min_fraction = 0.0,
+             test_min_fraction = 0.0,
+             doc_min_fraction = 0.0
+             )::Nothing
     # guideline_parameters is for parameters that are passed directly
     # from run through to the various Guidelines without modification:
-    guideline_parameters = GuidelineParameters()
+    guideline_parameters = GuidelineParameters(
+        # guideline_linecounts_meet_thresholds:
+        :readme_min_lines     => readme_min_lines,
+        :test_min_lines       => test_min_lines,
+        :doc_min_lines        => doc_min_lines,
+        :readme_min_fraction  => readme_min_fraction,
+        :test_min_fraction    => test_min_fraction,
+        :doc_min_fraction     => doc_min_fraction
+    )
     all_statuses = deepcopy(additional_statuses)
     all_check_runs = deepcopy(additional_check_runs)
     push!(all_statuses, "automerge/decision")
